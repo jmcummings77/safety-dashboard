@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Public safety filings for theme park rides and US highway bridges, collected from state and federal agencies.">
+<title>Safety Filings Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,600..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a register-style page. Header with source stamps, tabbed domains, summary tiles,
+   then charts, then the filed records themselves. Public Sans is the US government's own face. */
+:root {
+  --bg: #f4f6f5;
+  --surface: #fcfdfc;
+  --ink: #111615;
+  --ink-2: #48514f;
+  --muted: #7c8583;
+  --line: #dde2e0;
+  --axis: #c3c9c7;
+  --accent: #0d6a70;
+  --accent-wash: #e2efee;
+  --critical: #d03b3b;
+  --serious: #ec835a;
+  --warning: #fab219;
+  --good: #0ca30c;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --dot: rgba(208, 59, 59, 0.42);
+  --shadow: 0 1px 2px rgba(17, 22, 21, 0.06);
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1211; --surface: #161b1a; --ink: #eef2f1; --ink-2: #b6c0bd; --muted: #808a87;
+    --line: #283130; --axis: #3a4442; --accent: #5cc0c4; --accent-wash: #16302f;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --dot: rgba(230, 103, 103, 0.5); --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1211; --surface: #161b1a; --ink: #eef2f1; --ink-2: #b6c0bd; --muted: #808a87;
+  --line: #283130; --axis: #3a4442; --accent: #5cc0c4; --accent-wash: #16302f;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  --dot: rgba(230, 103, 103, 0.5); --shadow: none; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+table, button, input, select { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 28px; }
+@media (max-width: 520px) { .wrap { padding-inline: 16px; } }
+
+h1, h2, h3 { font-family: var(--f-display); font-stretch: 82%; margin: 0; text-wrap: balance; line-height: 1.1; }
+h1 { font-size: clamp(30px, 4.4vw, 44px); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 22px; font-weight: 700; }
+h3 { font-size: 17px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-size: 0.86em; }
+.muted { color: var(--muted); }
+.sub { color: var(--ink-2); max-width: 68ch; }
+.label { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* Header */
+header.top { display: grid; gap: 14px; }
+.stamps { display: flex; flex-wrap: wrap; gap: 8px; }
+.stamp { display: inline-flex; gap: 8px; align-items: baseline; padding: 5px 10px; border: 1px dashed var(--axis); border-radius: 4px; font-size: 12.5px; color: var(--ink-2); }
+.stamp b { font-family: var(--f-mono); font-weight: 500; color: var(--ink); font-size: 12px; }
+
+/* Tabs */
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+nav.tabs button { background: none; border: 0; padding: 10px 14px; cursor: pointer; color: var(--ink-2); font-weight: 600; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+nav.tabs button:hover { color: var(--ink); }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs .count { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+section.panel { display: grid; gap: 24px; }
+
+/* Filters */
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.field select, .field input { background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 7px 10px; min-height: 36px; }
+.field input[type="search"] { width: min(280px, 100%); }
+.btn-link { background: none; border: 0; padding: 7px 4px; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Tiles */
+.tiles { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.tile { flex: 1 1 170px; background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.tile .v { font-family: var(--f-display); font-stretch: 85%; font-weight: 700; font-size: 32px; line-height: 1; }
+.tile .n { font-size: 12.5px; color: var(--muted); }
+.tile.alert .v { color: var(--critical); }
+
+/* Cards */
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; box-shadow: var(--shadow); }
+.card-head { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; align-items: baseline; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.chart { width: 100%; min-width: 0; position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: var(--f-body); }
+.chart .tick-line { stroke: var(--line); }
+.chart .base { stroke: var(--axis); }
+
+/* Notes */
+.note { border-left: 3px solid var(--warning); background: var(--surface); padding: 12px 16px; border-radius: 0 6px 6px 0; color: var(--ink-2); font-size: 14px; display: grid; gap: 6px; max-width: 900px; }
+.note strong { color: var(--ink); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface); position: sticky; top: 0; white-space: nowrap; }
+th button { all: unset; cursor: pointer; }
+th button:hover { color: var(--ink); }
+th button:focus-visible { outline: 2px solid var(--accent); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.date { white-space: nowrap; font-family: var(--f-mono); font-size: 12.5px; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: var(--accent-wash); }
+tbody tr.selected { background: var(--accent-wash); box-shadow: inset 3px 0 0 var(--accent); }
+.desc { min-width: 260px; max-width: 520px; }
+.ride-name { font-weight: 600; }
+.park-tag { display: block; font-size: 12px; color: var(--muted); }
+.more { display: flex; justify-content: center; gap: 12px; align-items: center; padding: 10px; font-size: 13px; color: var(--muted); }
+
+/* Status chips: icon + label, never color alone */
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 6px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line); color: var(--ink-2); }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.chip.fatal::before { background: var(--critical); border-radius: 1px; transform: rotate(45deg); }
+.chip.serious::before { background: var(--serious); }
+.chip.poor::before { background: var(--critical); border-radius: 1px; transform: rotate(45deg); }
+.chip.overdue::before { background: var(--warning); border-radius: 1px; }
+.chip.closed::before { background: var(--ink); border-radius: 1px; }
+.chip.flag { font-weight: 500; }
+.chip.flag::before { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.pbar { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.pbar i { display: block; height: 6px; border-radius: 3px; background: var(--critical); }
+.pbar .track { width: 70px; height: 6px; border-radius: 3px; background: var(--line); display: flex; }
+
+.ratings { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+.ratings b { color: var(--critical); }
+
+/* Map */
+.map-box { position: relative; width: 100%; aspect-ratio: 975 / 610; max-width: 100%; }
+.map-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+
+/* Tooltip */
+#tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--bg); padding: 8px 10px; border-radius: 6px; font-size: 12.5px; line-height: 1.45; max-width: 280px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+#tip b { font-weight: 700; }
+#tip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+#tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+
+/* Sources */
+.src-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+@media (max-width: 420px) { .src-list { grid-template-columns: minmax(0, 1fr); } }
+.src { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.src .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.src p { font-size: 13.5px; color: var(--ink-2); }
+.status-live::before { background: var(--good); }
+.status-next::before { background: var(--accent); border-radius: 1px; }
+.status-hard::before { background: var(--warning); border-radius: 1px; }
+.status-unverified::before { background: transparent; border: 1.5px solid var(--muted); }
+
+footer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 4px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Safety Filings Tracker</h1>
+    <p class="sub">Public records filed about safety-critical equipment, pulled from state and federal agencies and put on one page. Starts with Florida's theme park incident reports and the National Bridge Inventory.</p>
+    <div class="stamps" id="stamps"></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Equipment type">
+    <button role="tab" id="tab-rides" aria-controls="rides" aria-selected="true">Theme park rides<span class="count" id="count-rides"></span></button>
+    <button role="tab" id="tab-bridges" aria-controls="bridges" aria-selected="false">Bridges<span class="count" id="count-bridges"></span></button>
+    <button role="tab" id="tab-sources" aria-controls="sources" aria-selected="false">Data sources</button>
+  </nav>
+
+  <!-- ============================== RIDES ============================== -->
+  <section class="panel" id="rides" role="tabpanel" aria-labelledby="tab-rides">
+    <div class="filters">
+      <div class="field"><label for="f-park">Park</label><select id="f-park"><option value="">All parks</option></select></div>
+      <div class="field"><label for="f-outcome">Outcome</label>
+        <select id="f-outcome">
+          <option value="">All reports</option>
+          <option value="fatal">Deaths</option>
+          <option value="serious">Serious (fracture, cardiac, stroke, seizure…)</option>
+          <option value="injury">Physical injury</option>
+          <option value="medical">Medical episode</option>
+        </select></div>
+      <div class="field"><label for="f-from">From</label><select id="f-from"></select></div>
+      <div class="field"><label for="f-to">To</label><select id="f-to"></select></div>
+      <div class="field"><label for="f-q">Search rides or descriptions</label><input type="search" id="f-q" placeholder="e.g. Space Mountain, fracture"></div>
+      <button class="btn-link" id="f-reset" type="button">Reset</button>
+    </div>
+
+    <div class="tiles" id="ride-tiles"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-head"><h3>Reported incidents per year</h3><span class="label" id="year-note"></span></div>
+        <div class="legend" id="park-legend"></div>
+        <div class="chart" id="year-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Attractions with the most reports</h3><span class="label">Click to filter</span></div>
+        <div class="chart" id="top-chart"></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <p><strong>What these reports are.</strong> Florida's largest parks are exempt from state ride inspections because they employ their own inspectors. In return they must report any ride-related injury or illness that keeps a guest in hospital for 24 hours or more. These are the parks' own first reports, filed quarterly with FDACS.</p>
+      <p><strong>What they are not.</strong> They are not maintenance or inspection records, and they do not establish cause. Many entries are medical episodes in guests with pre-existing conditions. FDACS receives no follow-up on a guest's condition. Counts depend on attendance and on how each park interprets the rule, so they don't rank ride safety.</p>
+    </div>
+
+    <div class="card-head"><h2>Filed reports</h2><span class="muted" id="ride-count"></span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Attraction</th><th>Guest</th><th>Reported condition</th><th>Flags</th></tr></thead>
+        <tbody id="ride-rows"></tbody>
+      </table>
+      <div class="more"><span id="ride-shown"></span><button class="btn-link" id="ride-more" type="button">Show 50 more</button></div>
+    </div>
+  </section>
+
+  <!-- ============================== BRIDGES ============================== -->
+  <section class="panel" id="bridges" role="tabpanel" aria-labelledby="tab-bridges" hidden>
+    <div class="tiles" id="bridge-tiles"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Bridges rated poor</h3>
+        <div class="legend">
+          <span><i style="background:var(--critical);border-radius:50%"></i>One poor-rated bridge; larger dots carry more traffic</span>
+          <span class="muted">Click a state to see its bridges</span>
+        </div>
+      </div>
+      <div class="map-box" id="map-box"><canvas id="map" aria-label="Map of poor-rated highway bridges in the US" role="img"></canvas></div>
+      <p class="muted" style="font-size:12.5px">Alaska and Hawaii are repositioned; Puerto Rico and the territories are counted in the table but not drawn. Condition is the lowest of the deck, superstructure, substructure and culvert ratings; 4 or below on FHWA's 0–9 scale is poor. Poor does not mean unsafe to cross: unsafe bridges are closed or load-posted.</p>
+    </div>
+
+    <div class="card-head"><h2>By state</h2><span class="muted">Click a row to see that state's bridges</span></div>
+    <div class="table-wrap" style="max-height: 520px">
+      <table>
+        <thead><tr id="state-head"></tr></thead>
+        <tbody id="state-rows"></tbody>
+      </table>
+    </div>
+
+    <div class="card-head"><h2 id="worst-title">Most-traveled poor bridges</h2><span class="muted">Top 40 by average daily traffic</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bridge</th><th>Owner</th><th class="num">Built</th><th class="num">Daily traffic</th><th>Ratings <span title="Deck · Superstructure · Substructure · Culvert. Lowest in red.">ⓘ</span></th><th>Last inspected</th><th>Status</th><th></th></tr></thead>
+        <tbody id="worst-rows"></tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:12.5px">Ratings read deck · superstructure · substructure · culvert, N = not applicable. "Overdue" means the last routine inspection was more than <span id="grace"></span> months past the bridge's required interval when the state submitted its data.</p>
+  </section>
+
+  <!-- ============================== SOURCES ============================== -->
+  <section class="panel" id="sources" role="tabpanel" aria-labelledby="tab-sources" hidden>
+    <p class="sub">Few states publish ride <em>maintenance</em> logs. What exists publicly is mostly incident reports, inspection status lookups, and records you can get by request. Bridges, dams and elevators have much better structured data. Each source below has its own adapter in <span class="mono">pipeline/sources/</span>.</p>
+    <div class="src-list" id="src-list"></div>
+  </section>
+
+  <footer>
+    <p id="built"></p>
+    <p>Source code and pipeline: <a href="https://github.com/jmcummings77/safety-dashboard">github.com/jmcummings77/safety-dashboard</a> · MIT licensed.</p>
+    <p>Data is reproduced as filed. Parsing of free-text reports is automated and may contain errors; check the original filing before citing a record.</p>
+  </footer>
+</div>
+<div id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="us-states.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+const D = window.SAFETY_DATA;
+const $ = (s) => document.querySelector(s);
+const nf = new Intl.NumberFormat("en-US");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmtDate = (iso, opts = { month: "short", day: "numeric", year: "numeric" }) =>
+  iso ? new Date(iso + "T12:00:00").toLocaleDateString("en-US", opts) : "—";
+const pct = (a, b) => (b ? (100 * a / b) : 0);
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+/* ---------- tooltip ---------- */
+const tip = $("#tip");
+function showTip(html, ev) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+/* ---------- header ---------- */
+const rides = D.rides, bridges = D.bridges;
+$("#stamps").innerHTML = [
+  ["FDACS theme park report", "updated " + fmtDate(rides.source.as_of)],
+  ["National Bridge Inventory", "2025 release"],
+].map(([a, b]) => `<span class="stamp">${esc(a)} <b>${esc(b)}</b></span>`).join("");
+$("#built").textContent = "Dashboard built " + fmtDate(D.built_at.slice(0, 10)) + " by the data pipeline.";
+$("#count-rides").textContent = nf.format(rides.incidents.length);
+$("#count-bridges").textContent = nf.format(bridges.states.reduce((a, s) => a + s.total, 0));
+
+/* ---------- tabs ---------- */
+const tabs = ["rides", "bridges", "sources"];
+function selectTab(id) {
+  if (!tabs.includes(id)) id = "rides";
+  tabs.forEach((t) => {
+    $("#tab-" + t).setAttribute("aria-selected", t === id);
+    $("#" + t).hidden = t !== id;
+  });
+  if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
+  store.set("tab", id);
+  if (id === "rides") renderRides();
+  if (id === "bridges") renderBridges();
+}
+tabs.forEach((t) => $("#tab-" + t).addEventListener("click", () => selectTab(t)));
+
+/* =====================================================================
+   RIDES
+   ===================================================================== */
+const PARKS = ["Walt Disney World", "Universal Orlando", "SeaWorld Orlando", "Busch Gardens Tampa Bay", "LEGOLAND Florida", "Wet 'n Wild Orlando"];
+const parkColor = (p) => `var(--s${PARKS.indexOf(p) + 1})`;
+const incidents = rides.incidents.map((r) => ({ ...r, year: +r.date.slice(0, 4), hay: (r.ride + " " + r.desc + " " + r.park).toLowerCase() }));
+const years = [...new Set(incidents.map((r) => r.year))].sort();
+const lastQuarter = incidents.reduce((a, r) => (r.q > a ? r.q : a), "");
+
+$("#f-park").insertAdjacentHTML("beforeend", PARKS.map((p) => `<option>${esc(p)}</option>`).join(""));
+$("#f-from").innerHTML = years.map((y) => `<option>${y}</option>`).join("");
+$("#f-to").innerHTML = years.map((y) => `<option>${y}</option>`).join("");
+$("#f-from").value = years[0]; $("#f-to").value = years[years.length - 1];
+
+let rideLimit = 50;
+const F = () => ({ park: $("#f-park").value, outcome: $("#f-outcome").value, from: +$("#f-from").value, to: +$("#f-to").value, q: $("#f-q").value.trim().toLowerCase() });
+function filtered() {
+  const f = F();
+  return incidents.filter((r) =>
+    (!f.park || r.park === f.park) &&
+    (!f.outcome || (f.outcome === "fatal" ? r.sev === "fatal" : f.outcome === "serious" ? r.sev !== "other" : r.type === f.outcome)) &&
+    r.year >= f.from && r.year <= f.to &&
+    (!f.q || f.q.split(/\s+/).every((w) => r.hay.includes(w))));
+}
+["#f-park", "#f-outcome", "#f-from", "#f-to"].forEach((s) => $(s).addEventListener("change", () => { rideLimit = 50; renderRides(); }));
+$("#f-q").addEventListener("input", () => { rideLimit = 50; renderRides(); });
+$("#f-reset").addEventListener("click", () => {
+  $("#f-park").value = ""; $("#f-outcome").value = ""; $("#f-q").value = "";
+  $("#f-from").value = years[0]; $("#f-to").value = years[years.length - 1];
+  rideLimit = 50; renderRides();
+});
+$("#ride-more").addEventListener("click", () => { rideLimit += 50; renderRides(); });
+
+function renderRides() {
+  const rows = filtered();
+  const fatal = rows.filter((r) => r.sev === "fatal").length;
+  const serious = rows.filter((r) => r.sev !== "other").length;
+  const pre = rows.filter((r) => r.pre).length;
+  const injury = rows.filter((r) => r.type === "injury").length;
+  $("#ride-tiles").innerHTML = [
+    ["Reports filed", nf.format(rows.length), `${years[0]}–${lastQuarter.replace("-", " ")}`],
+    ["Deaths reported", nf.format(fatal), "includes later deaths noted in the filing", fatal ? "alert" : ""],
+    ["Serious outcomes", nf.format(serious), `${pct(serious, rows.length).toFixed(0)}% of reports, deaths included`],
+    ["Physical injuries", nf.format(injury), "falls, fractures, cuts; the rest are medical episodes"],
+    ["Pre-existing condition noted", `${pct(pre, rows.length).toFixed(0)}%`, `${nf.format(pre)} reports mention one`],
+  ].map(([k, v, n, c]) => `<div class="tile ${c || ""}"><span class="label">${k}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
+
+  drawYearChart(rows);
+  drawTopChart(rows);
+
+  $("#ride-count").textContent = `${nf.format(rows.length)} reports, newest first`;
+  $("#ride-rows").innerHTML = rows.slice(0, rideLimit).map((r) => `
+    <tr>
+      <td class="date">${fmtDate(r.date)}</td>
+      <td><span class="ride-name">${esc(r.ride || "Not stated")}</span><span class="park-tag">${esc(r.park)}</span></td>
+      <td class="num">${r.age ?? "—"}${r.sex ? " " + r.sex : ""}</td>
+      <td class="desc">${esc(r.desc)}</td>
+      <td><div class="chips">
+        ${r.sev === "fatal" ? '<span class="chip fatal">Death</span>' : r.sev === "serious" ? '<span class="chip serious">Serious</span>' : ""}
+        <span class="chip flag">${r.type === "medical" ? "Medical" : "Injury"}</span>
+        ${r.pre ? '<span class="chip flag">Pre-existing</span>' : ""}
+      </div></td>
+    </tr>`).join("") || `<tr><td colspan="5" class="muted">No reports match these filters.</td></tr>`;
+  $("#ride-shown").textContent = rows.length ? `Showing ${Math.min(rideLimit, rows.length)} of ${nf.format(rows.length)}` : "";
+  $("#ride-more").hidden = rideLimit >= rows.length;
+}
+
+const niceTicks = (v) => d3.scaleLinear().domain([0, Math.max(4, v)]).nice(4).ticks(4);
+
+function drawYearChart(rows) {
+  const box = $("#year-chart");
+  const f = F();
+  const ys = years.filter((y) => y >= f.from && y <= f.to);
+  const parks = PARKS.filter((p) => rows.some((r) => r.park === p));
+  $("#park-legend").innerHTML = parks.map((p) => `<span><i style="background:${parkColor(p)}"></i>${esc(p)}</span>`).join("");
+  $("#year-note").textContent = ys.includes(years[years.length - 1]) ? `${years[years.length - 1]} is through ${lastQuarter.slice(5)}` : "";
+  const W = Math.max(300, box.clientWidth), H = 280, m = { t: 8, r: 4, b: 24, l: 30 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const byYear = ys.map((y) => { const o = { y, total: 0 }; parks.forEach((p) => (o[p] = 0)); rows.forEach((r) => { if (r.year === y) { o[r.park]++; o.total++; } }); return o; });
+  const ticks = niceTicks(Math.max(...byYear.map((d) => d.total)));
+  const max = ticks[ticks.length - 1];
+  const step = iw / ys.length, bw = Math.max(3, Math.min(28, step - 3));
+  const yS = (v) => m.t + ih - (v / max) * ih;
+  const labelEvery = Math.ceil(ys.length / Math.floor(iw / 38));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stacked bars of reports per year by park">`;
+  ticks.forEach((t) => { s += `<line class="tick-line" x1="${m.l}" x2="${W - m.r}" y1="${yS(t)}" y2="${yS(t)}"/><text x="${m.l - 6}" y="${yS(t) + 4}" text-anchor="end">${t}</text>`; });
+  byYear.forEach((d, i) => {
+    const x = m.l + i * step + (step - bw) / 2;
+    let acc = 0;
+    const segs = parks.filter((p) => d[p]);
+    segs.forEach((p, j) => {
+      const y0 = yS(acc), y1 = yS(acc + d[p]); acc += d[p];
+      const h = Math.max(0, y0 - y1 - (j < segs.length - 1 ? 0 : 0));
+      const top = j === segs.length - 1;
+      s += top
+        ? `<path d="M${x},${y0} V${y1 + 3} q0,-3 3,-3 H${x + bw - 3} q3,0 3,3 V${y0} Z" fill="${parkColor(p)}" stroke="var(--surface)" stroke-width="1"/>`
+        : `<rect x="${x}" y="${y1}" width="${bw}" height="${h}" fill="${parkColor(p)}" stroke="var(--surface)" stroke-width="1"/>`;
+    });
+    if (i % labelEvery === 0) s += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${String(d.y)}</text>`;
+    s += `<rect class="hit" data-i="${i}" x="${m.l + i * step}" y="${m.t}" width="${step}" height="${ih}" fill="transparent"/>`;
+  });
+  s += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yS(0)}" y2="${yS(0)}"/></svg>`;
+  box.innerHTML = s;
+  box.querySelectorAll(".hit").forEach((el) => {
+    el.addEventListener("mousemove", (ev) => {
+      const d = byYear[+el.dataset.i];
+      showTip(`<b>${d.y}</b> · ${d.total} report${d.total === 1 ? "" : "s"}` +
+        parks.filter((p) => d[p]).map((p) => `<div class="row"><span><i class="sw" style="background:${parkColor(p)}"></i>${esc(p)}</span><span>${d[p]}</span></div>`).join(""), ev);
+    });
+    el.addEventListener("mouseleave", hideTip);
+  });
+}
+
+function drawTopChart(rows) {
+  const box = $("#top-chart");
+  const counts = new Map();
+  rows.forEach((r) => {
+    if (!r.ride) return;
+    const k = r.park + "|" + r.ride;
+    const o = counts.get(k) || { ride: r.ride, park: r.park, n: 0, fatal: 0 };
+    o.n++; if (r.sev === "fatal") o.fatal++;
+    counts.set(k, o);
+  });
+  const top = [...counts.values()].sort((a, b) => b.n - a.n || a.ride.localeCompare(b.ride)).slice(0, 10);
+  if (!top.length) { box.innerHTML = `<p class="muted">No attractions match.</p>`; return; }
+  const max = top[0].n;
+  box.innerHTML = `<div style="display:grid;gap:9px">` + top.map((t) => `
+    <button type="button" class="top-row" data-ride="${esc(t.ride)}" style="all:unset;cursor:pointer;display:grid;gap:3px">
+      <span style="display:flex;justify-content:space-between;gap:10px;font-size:13px">
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b style="font-weight:600">${esc(t.ride)}</b> <span class="muted">${esc(t.park.replace(/ (Orlando|Florida|Tampa Bay)$/, ""))}</span></span>
+        <span style="font-variant-numeric:tabular-nums;white-space:nowrap">${t.n}${t.fatal ? ` <span class="chip fatal" style="margin-left:4px">${t.fatal} death${t.fatal > 1 ? "s" : ""}</span>` : ""}</span>
+      </span>
+      <span style="display:block;height:8px;background:var(--line);border-radius:4px"><span style="display:block;height:8px;width:${(100 * t.n / max).toFixed(1)}%;background:${parkColor(t.park)};border-radius:4px"></span></span>
+    </button>`).join("") + `</div>`;
+  box.querySelectorAll(".top-row").forEach((b) => b.addEventListener("click", () => {
+    $("#f-q").value = b.dataset.ride.toLowerCase(); rideLimit = 50; renderRides();
+    $("#ride-rows").closest(".table-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+}
+
+/* =====================================================================
+   BRIDGES
+   ===================================================================== */
+const states = bridges.states;
+const fipsName = {};
+const stateFeatures = topojson.feature(US_STATES, US_STATES.objects.states).features;
+stateFeatures.forEach((f) => (fipsName[f.id] = f.properties.name));
+Object.assign(fipsName, { "72": "Puerto Rico", "78": "U.S. Virgin Islands", "66": "Guam" });
+const stateName = (s) => fipsName[s.fips] || s.state;
+const byAbbr = Object.fromEntries(states.map((s) => [s.state, s]));
+const byFips = Object.fromEntries(states.map((s) => [s.fips, s]));
+const T = states.reduce((a, s) => { for (const k of ["total", "poor", "closed", "posted", "overdue", "scour", "poor_daily_crossings"]) a[k] = (a[k] || 0) + s[k]; return a; }, {});
+$("#grace").textContent = bridges.source.overdue_grace_months;
+
+let selState = store.get("state");
+if (!byAbbr[selState]) selState = states.filter((s) => s.total > 1000).sort((a, b) => b.poor / b.total - a.poor / a.total)[0].state;
+let sortKey = "poor_pct", sortDir = -1, bridgesDrawn = false;
+
+const COLS = [
+  ["state", "State", false], ["total", "Bridges", true], ["poor", "Poor", true], ["poor_pct", "% poor", true],
+  ["closed", "Closed", true], ["posted", "Load-posted", true], ["overdue", "Overdue", true], ["scour", "Scour-critical", true], ["median_age", "Median age", true],
+];
+
+function renderBridges() {
+  $("#bridge-tiles").innerHTML = [
+    ["Highway bridges", nf.format(T.total), "every public road bridge over 20 ft"],
+    ["Rated poor", nf.format(T.poor), `${pct(T.poor, T.total).toFixed(1)}% of all bridges`, "alert"],
+    ["Closed to traffic", nf.format(T.closed), "at the time of submission"],
+    ["Load-posted", nf.format(T.posted), "weight limits below legal loads"],
+    ["Overdue inspection", nf.format(T.overdue), `over ${bridges.source.overdue_grace_months} months past interval`],
+    ["Daily trips on poor bridges", (T.poor_daily_crossings / 1e6).toFixed(0) + "M", "sum of average daily traffic"],
+  ].map(([k, v, n, c]) => `<div class="tile ${c || ""}"><span class="label">${k}</span><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
+  renderStateTable();
+  renderWorst();
+  drawMap();
+  bridgesDrawn = true;
+}
+
+function renderStateTable() {
+  $("#state-head").innerHTML = COLS.map(([k, label, num]) =>
+    `<th class="${num ? "num" : ""}" aria-sort="${sortKey === k ? (sortDir > 0 ? "ascending" : "descending") : "none"}"><button type="button" data-k="${k}">${label}${sortKey === k ? (sortDir > 0 ? " ▲" : " ▼") : ""}</button></th>`).join("");
+  $("#state-head").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.k; sortDir = sortKey === k ? -sortDir : (k === "state" ? 1 : -1); sortKey = k; renderStateTable();
+  }));
+  const val = (s, k) => k === "poor_pct" ? s.poor / s.total : k === "state" ? stateName(s) : s[k] ?? -1;
+  const maxPct = Math.max(...states.map((s) => s.poor / s.total));
+  const rows = [...states].sort((a, b) => { const x = val(a, sortKey), y = val(b, sortKey); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+  $("#state-rows").innerHTML = rows.map((s) => `
+    <tr class="clickable ${s.state === selState ? "selected" : ""}" data-s="${s.state}" tabindex="0">
+      <td><b style="font-weight:600">${esc(stateName(s))}</b> <span class="muted mono">${s.state}</span></td>
+      <td class="num">${nf.format(s.total)}</td>
+      <td class="num">${nf.format(s.poor)}</td>
+      <td class="num"><span class="pbar">${pct(s.poor, s.total).toFixed(1)}%<span class="track"><i style="width:${(100 * (s.poor / s.total) / maxPct).toFixed(1)}%"></i></span></span></td>
+      <td class="num">${nf.format(s.closed)}</td>
+      <td class="num">${nf.format(s.posted)}</td>
+      <td class="num">${nf.format(s.overdue)}</td>
+      <td class="num">${nf.format(s.scour)}</td>
+      <td class="num">${s.median_age ?? "—"} yr</td>
+    </tr>`).join("");
+  $("#state-rows").querySelectorAll("tr").forEach((tr) => {
+    const go = () => pickState(tr.dataset.s, true);
+    tr.addEventListener("click", go);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+}
+
+function pickState(abbr, scroll) {
+  selState = abbr; store.set("state", abbr);
+  renderStateTable(); renderWorst(); drawMap();
+  if (scroll) $("#worst-title").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+const POSTED = { K: ["closed", "Closed"], B: ["overdue", "Posted"], P: ["overdue", "Posted"], R: ["overdue", "Posted"] };
+function renderWorst() {
+  const s = byAbbr[selState];
+  $("#worst-title").textContent = `Most-traveled poor bridges in ${stateName(s)}`;
+  const rows = bridges.worst.filter((b) => b.state === selState);
+  $("#worst-rows").innerHTML = rows.map((b) => {
+    const r = [b.deck, b.super, b.sub, b.culvert].map((v) => (+v === b.lowest_rating ? `<b>${esc(v)}</b>` : esc(v))).join(" · ");
+    const status = [
+      '<span class="chip poor">Poor</span>',
+      POSTED[b.posted] ? `<span class="chip ${POSTED[b.posted][0]}">${POSTED[b.posted][1]}</span>` : "",
+      b.overdue ? '<span class="chip overdue">Overdue</span>' : "",
+    ].join("");
+    const map = b.lat && b.lon ? `<a href="https://www.google.com/maps?q=${b.lat},${b.lon}" target="_blank" rel="noopener">Map ↗</a>` : "";
+    return `<tr>
+      <td><span class="ride-name">${esc(b.carries)}</span> <span class="muted">over</span> ${esc(b.crosses)}<span class="park-tag">${esc(b.location)} · <span class="mono">${esc(b.id.split("-").slice(1).join("-").replace(/^0+/, ""))}</span></span></td>
+      <td>${esc(b.owner)}</td>
+      <td class="num">${b.year_built ?? "—"}</td>
+      <td class="num">${nf.format(b.adt ?? 0)}</td>
+      <td class="ratings">${r}</td>
+      <td class="date">${fmtDate(b.inspected, { month: "short", year: "numeric" })}</td>
+      <td><div class="chips">${status}</div></td>
+      <td>${map}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8" class="muted">No poor-rated bridges reported in this state.</td></tr>`;
+}
+
+/* ---------- map ---------- */
+const proj = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
+const pts = bridges.poor_points.map(([lon, lat, adt]) => { const p = proj([lon, lat]); return p && [p[0], p[1], adt]; }).filter(Boolean)
+  .sort((a, b) => a[2] - b[2]);
+const statePaths = stateFeatures.map((f) => ({ id: f.id, path: new Path2D(d3.geoPath()(f)) }));
+const canvas = $("#map");
+let hoverFips = null;
+
+function drawMap() {
+  const box = $("#map-box"), dpr = window.devicePixelRatio || 1;
+  const w = box.clientWidth, h = box.clientHeight;
+  if (!w) return;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext("2d");
+  const k = w / 975;
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+  ctx.clearRect(0, 0, 975, 610);
+  const line = css("--axis"), surface = css("--bg"), accent = css("--accent"), wash = css("--accent-wash");
+  ctx.lineJoin = "round";
+  statePaths.forEach((s) => {
+    const sel = byFips[s.id]?.state === selState;
+    ctx.fillStyle = sel ? wash : surface; ctx.fill(s.path);
+  });
+  ctx.fillStyle = css("--dot");
+  const r0 = Math.max(0.9, 1.1 / k);
+  for (const [x, y, adt] of pts) {
+    const r = adt > 20000 ? r0 * 2.6 : adt > 2000 ? r0 * 1.7 : r0;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+  ctx.strokeStyle = line; ctx.lineWidth = 0.7 / k;
+  statePaths.forEach((s) => ctx.stroke(s.path));
+  statePaths.forEach((s) => {
+    const sel = byFips[s.id]?.state === selState;
+    if (sel || s.id === hoverFips) { ctx.strokeStyle = accent; ctx.lineWidth = (sel ? 2 : 1.4) / k; ctx.stroke(s.path); }
+  });
+}
+function stateAt(ev) {
+  const rect = canvas.getBoundingClientRect(), k = rect.width / 975;
+  const x = (ev.clientX - rect.left) / k, y = (ev.clientY - rect.top) / k;
+  const ctx = canvas.getContext("2d");
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const hit = statePaths.find((s) => ctx.isPointInPath(s.path, x, y));
+  ctx.restore();
+  return hit && byFips[hit.id];
+}
+canvas.addEventListener("mousemove", (ev) => {
+  const s = stateAt(ev);
+  const f = s ? s.fips : null;
+  if (f !== hoverFips) { hoverFips = f; drawMap(); }
+  if (!s) return hideTip();
+  showTip(`<b>${esc(stateName(s))}</b>
+    <div class="row"><span>Bridges</span><span>${nf.format(s.total)}</span></div>
+    <div class="row"><span>Rated poor</span><span>${nf.format(s.poor)} (${pct(s.poor, s.total).toFixed(1)}%)</span></div>
+    <div class="row"><span>Closed</span><span>${nf.format(s.closed)}</span></div>
+    <div class="row"><span>Overdue inspection</span><span>${nf.format(s.overdue)}</span></div>`, ev);
+});
+canvas.addEventListener("mouseleave", () => { hoverFips = null; hideTip(); drawMap(); });
+canvas.addEventListener("click", (ev) => { const s = stateAt(ev); if (s) pickState(s.state, false); });
+
+/* ---------- sources ---------- */
+const SOURCES = [
+  { s: "live", t: "Live", name: "MOU Exempt Facilities Report", who: "Florida Dept. of Agriculture & Consumer Services", kind: "Ride incident reports", cadence: "Quarterly · 2001 to present · PDF",
+    body: "Self-reported injuries and illnesses with 24h+ hospitalization at Disney, Universal, SeaWorld, Busch Gardens and LEGOLAND. Parsed from the cumulative PDF.", url: rides.source.url },
+  { s: "live", t: "Live", name: "National Bridge Inventory", who: "Federal Highway Administration", kind: "Bridge inspections & condition", cadence: "Annual · 624k bridges · CSV",
+    body: "Last inspection date, required interval and 0–9 condition ratings for every highway bridge. Prior years back to 1992 use the same format, which would allow trend lines per bridge.", url: bridges.source.url },
+  { s: "next", t: "Next up", name: "Saferparks accident data", who: "RidesDatabase.org (Saferparks archive)", kind: "Ride incident reports, multi-state", cadence: "2017 compilation · ~8,300 reports · CSV",
+    body: "Records-request results from many state regulators, harmonized. Historical only, and the site blocks automated downloads, so the CSV needs a one-time manual download into raw/.", url: "https://ridesdatabase.org/saferparks/data/" },
+  { s: "next", t: "Next up", name: "RideSafe Pennsylvania", who: "Pennsylvania Dept. of Agriculture", kind: "Ride registration & inspection status", cadence: "Live lookup · HTML",
+    body: "PA requires inspections every 30 days at parks and at each carnival setup. The public search mainly covers upcoming events; check its terms before scraping.", url: "https://www.ridesafe.pa.gov/" },
+  { s: "hard", t: "By request", name: "Amusement ride compliance", who: "Texas Dept. of Insurance", kind: "Inspection certificates, injury reports", cadence: "Biennial report · records request",
+    body: "TDI does not inspect rides itself; insurers arrange inspections. Certificates and injury reports are available by public records request, with an aggregate compliance report published every two years.", url: "https://www.tdi.texas.gov/COMMERCIAL/lcamuseinfo.html" },
+  { s: "hard", t: "By request", name: "Division of Amusement Ride Safety", who: "Ohio Dept. of Agriculture", kind: "Ride inspection reports", cadence: "Annual inspections · records request",
+    body: "No public search found. Journalists have obtained full per-ride inspection reports on request, so a standing records request is the route in.", url: "https://agri.ohio.gov/" },
+  { s: "unverified", t: "Not yet checked", name: "National Inventory of Dams", who: "US Army Corps of Engineers", kind: "Dam hazard class & condition", cadence: "Annual · bulk download",
+    body: "Hazard potential, condition assessment and last inspection date for ~90k dams. A natural third domain after rides and bridges.", url: "https://nid.sec.usace.army.mil/" },
+  { s: "unverified", t: "Not yet checked", name: "Elevator inspections", who: "NYC Dept. of Buildings (NYC Open Data)", kind: "Elevator & escalator inspections", cadence: "Continuous · Socrata API",
+    body: "Device-level inspection outcomes and violations. City-scale only, but a good template for municipal open-data portals.", url: "https://opendata.cityofnewyork.us/" },
+];
+$("#src-list").innerHTML = SOURCES.map((x) => `
+  <article class="src">
+    <div class="meta"><span class="chip status-${x.s}">${x.t}</span><span class="chip flag">${esc(x.kind)}</span></div>
+    <h3>${esc(x.name)}</h3>
+    <p class="muted" style="font-size:12.5px">${esc(x.who)} · ${esc(x.cadence)}</p>
+    <p>${esc(x.body)}</p>
+    <p><a href="${esc(x.url)}" target="_blank" rel="noopener">Source ↗</a></p>
+  </article>`).join("");
+
+/* ---------- boot ---------- */
+let resizeT;
+new ResizeObserver(() => { clearTimeout(resizeT); resizeT = setTimeout(() => {
+  if (!$("#rides").hidden) { const r = filtered(); drawYearChart(r); }
+  if (!$("#bridges").hidden) drawMap();
+}, 80); }).observe($(".wrap"));
+const redrawTheme = () => { if (!$("#bridges").hidden) drawMap(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawTheme);
+new MutationObserver(redrawTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+selectTab(location.hash.slice(1) || store.get("tab") || "rides");
+})();
+</script>
+</body>
+</html>

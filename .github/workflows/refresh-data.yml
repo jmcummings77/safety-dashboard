@@ -1,0 +1,55 @@
+name: Refresh data
+
+# Re-pull every source weekly. Commits site/data.js only when the data itself changed
+# (not just the build timestamp), then redeploys the site.
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: python pipeline/build.py --refresh
+      - name: Sanity-check the export
+        run: pytest tests/test_site_data.py
+      - name: Compare with committed data
+        id: diff
+        run: |
+          python - <<'PY'
+          import json, os, re, subprocess
+
+          def load(text):
+              d = json.loads(re.fullmatch(r"window\.SAFETY_DATA = (.*);\s*", text, re.S).group(1))
+              d.pop("built_at", None)
+              return d
+
+          old = subprocess.run(["git", "show", "HEAD:site/data.js"], capture_output=True, text=True, check=True).stdout
+          changed = load(old) != load(open("site/data.js").read())
+          print("data changed:", changed)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"changed={str(changed).lower()}\n")
+          PY
+      - name: Commit and redeploy
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data.js site/us-states.js
+          git commit -m "Refresh data $(date -u +%Y-%m-%d)"
+          git push
+          gh workflow run pages.yml --ref main
